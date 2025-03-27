@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Player1 & Player2's Jeopardy!</title>
+    <style>
+        /* Basic Reset & Body Styles */
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: #060ce9; /* Jeopardy Blue */
+            color: #ffffff;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            font-family: 'Impact', 'Arial Black', sans-serif; /* Jeopardy Font Style */
+            color: #ffffff;
+            text-shadow: 2px 2px 4px #000000;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        /* Loading Indicator */
+        #loading {
+            font-size: 1.5em;
+            color: #ffcc00; /* Jeopardy Yellow */
+            text-align: center;
+            padding: 50px;
+        }
+
+        /* Game Container */
+        #game-container {
+            display: none; /* Hidden until data is loaded */
+            width: 100%;
+            max-width: 1200px;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* Scoreboard Styles */
+        #scoreboard {
+            display: flex;
+            justify-content: space-around;
+            width: 80%;
+            max-width: 600px;
+            background-color: #0a0a7a;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .player-score {
+            text-align: center;
+            font-size: 1.4em;
+            font-weight: bold;
+        }
+
+        .player-score span {
+            display: block;
+            margin-top: 5px;
+            font-size: 1.6em;
+            color: #ffcc00; /* Jeopardy Yellow */
+        }
+
+        /* Jeopardy Board Styles */
+        #jeopardy-board {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 5px;
+            width: 100%;
+            margin-bottom: 30px;
+        }
+
+        .category-header {
+            background-color: #0a0a7a;
+            color: #ffffff;
+            font-weight: bold;
+            font-size: 0.9em; /* Adjust as needed */
+            padding: 10px 5px;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 60px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.5);
+        }
+
+        .clue-cell {
+            background-color: #0a0a7a;
+            color: #ffcc00; /* Jeopardy Yellow */
+            font-size: 1.8em;
+            font-weight: bold;
+            padding: 15px 5px;
+            text-align: center;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 80px;
+            border-radius: 4px;
+            transition: transform 0.2s ease, background-color 0.2s ease;
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.5);
+            position: relative; /* For potential future overlays */
+        }
+
+        .clue-cell:not(.answered):hover {
+            transform: scale(1.05);
+            background-color: #1a1acc;
+        }
+
+        .clue-cell.answered {
+            background-color: #333; /* Darker grey for answered */
+            color: #555;
+            cursor: default;
+            pointer-events: none; /* Disable clicking */
+            box-shadow: none;
+        }
+        .clue-cell.answered::after {
+            content: ''; /* Clear content if needed */
+        }
+
+        /* Question Modal Styles */
+        #question-modal {
+            display: none; /* Hidden by default */
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.7); /* Dim background */
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: #060ce9; /* Jeopardy Blue */
+            padding: 30px;
+            border: 5px solid #ffffff;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            width: 90%;
+            max-width: 800px;
+            text-align: center;
+            position: relative;
+            border-radius: 10px;
+        }
+
+        #modal-close-btn {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #fff;
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+
+        #modal-category {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #ffcc00; /* Jeopardy Yellow */
+            margin-bottom: 15px;
+            text-transform: uppercase;
+        }
+
+        #modal-question {
+            font-size: 2em; /* Larger font for the question */
+            color: #ffffff;
+            margin-bottom: 25px;
+            min-height: 100px; /* Ensure space */
+            line-height: 1.4;
+        }
+
+        #modal-answer {
+            font-size: 1.5em;
+            color: #aaffaa; /* Lighter green for answer */
+            margin-bottom: 20px;
+            font-style: italic;
+            display: none; /* Hidden until revealed */
+        }
+
+        /* Buzzer Area */
+        #buzzer-area {
+             display: none; /* Hidden until needed */
+             margin-top: 20px;
+             text-align: center;
+        }
+
+        #buzzer {
+            background-color: red;
+            color: white;
+            font-size: 2em;
+            font-weight: bold;
+            padding: 30px 60px;
+            border-radius: 50%; /* Make it round */
+            border: 5px solid darkred;
+            cursor: pointer;
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.4);
+            transition: transform 0.1s ease, background-color 0.1s ease;
+            display: inline-block; /* Ensure it respects padding and centers */
+            text-transform: uppercase;
+        }
+
+        #buzzer:hover {
+            background-color: darkred;
+            transform: scale(1.05);
+        }
+
+        #buzzer:active {
+            transform: scale(0.95);
+        }
+
+         #buzzer:disabled {
+            background-color: #999;
+            color: #ccc;
+            cursor: not-allowed;
+            border-color: #666;
+            box-shadow: none;
+            transform: none;
+         }
+
+        /* Player Selection Area (within modal) */
+        #player-selection-area {
+            margin-top: 15px;
+            display: none; /* Hidden initially */
+        }
+
+        #player-selection-area button {
+             font-size: 1.2em;
+             padding: 10px 20px;
+             margin: 0 10px;
+             cursor: pointer;
+             background-color: #ffcc00;
+             color: #060ce9;
+             border: none;
+             border-radius: 5px;
+             font-weight: bold;
+        }
+        #player-selection-area button:hover {
+            background-color: #ffd633;
+        }
+
+        /* Validation Area (within modal) */
+        #validation-area {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px dashed #fff;
+            display: none; /* Hidden initially */
+        }
+
+         #whos-answering {
+            font-size: 1.2em;
+            margin-bottom: 10px;
+            color: #fff;
+         }
+
+         #validation-area button {
+            font-size: 1.2em;
+            padding: 10px 25px;
+            margin: 0 10px;
+            cursor: pointer;
+            border-radius: 5px;
+            font-weight: bold;
+            border: none;
+         }
+
+        #correct-btn {
+            background-color: #4CAF50; /* Green */
+            color: white;
+        }
+        #correct-btn:hover {
+            background-color: #45a049;
+        }
+
+        #incorrect-btn {
+            background-color: #f44336; /* Red */
+            color: white;
+        }
+        #incorrect-btn:hover {
+            background-color: #da190b;
+        }
+
+        /* New Game Button */
+        #new-game-btn {
+            margin-top: 30px;
+            padding: 15px 30px;
+            font-size: 1.2em;
+            cursor: pointer;
+            background-color: #ffcc00;
+            color: #060ce9;
+            border: none;
+            border-radius: 5px;
+            font-weight: bold;
+            transition: background-color 0.2s ease;
+        }
+        #new-game-btn:hover {
+             background-color: #ffd633;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            h1 {
+                font-size: 1.8em;
+            }
+            #jeopardy-board {
+                gap: 3px;
+            }
+            .category-header {
+                font-size: 0.7em;
+                min-height: 50px;
+                padding: 5px 2px;
+            }
+            .clue-cell {
+                font-size: 1.2em;
+                min-height: 60px;
+                padding: 10px 2px;
+            }
+            #scoreboard {
+                width: 95%;
+                padding: 10px;
+            }
+             .player-score {
+                font-size: 1em;
+            }
+             .player-score span {
+                font-size: 1.2em;
+             }
+            #buzzer {
+                font-size: 1.5em;
+                padding: 20px 40px;
+            }
+            .modal-content {
+                padding: 20px;
+                width: 95%;
+            }
+             #modal-question {
+                font-size: 1.5em;
+             }
+             #modal-answer {
+                font-size: 1.2em;
+             }
+             #player-selection-area button,
+             #validation-area button {
+                 font-size: 1em;
+                 padding: 8px 15px;
+             }
+             #new-game-btn {
+                 padding: 12px 25px;
+                 font-size: 1em;
+             }
+        }
+         @media (max-width: 480px) {
+             .category-header {
+                 font-size: 0.6em; /* Even smaller for tiny screens */
+             }
+             .clue-cell {
+                 font-size: 1em;
+             }
+         }
+
+    </style>
+</head>
+<body>
+
+    <h1>Player1 & Player2's Jeopardy!</h1>
+
+    <div id="loading">Loading Game... Fetching clues from the J! Archive...</div>
+
+    <div id="game-container">
+        <div id="scoreboard">
+            <div class="player-score">Player1<span id="Player1-score">0</span></div>
+            <div class="player-score">Player2<span id="Player2-score">0</span></div>
+        </div>
+
+        <div id="jeopardy-board">
+            <!-- Board will be populated by JavaScript -->
+        </div>
+
+        <button id="new-game-btn">Load New Random Game</button>
+    </div>
+
+    <!-- Question Modal -->
+    <div id="question-modal">
+        <div class="modal-content">
+            <button id="modal-close-btn" title="Close Clue">&times;</button>
+            <div id="modal-category">CATEGORY</div>
+            <div id="modal-question">Here is the clue...</div>
+            <div id="modal-answer">Here is the answer...</div>
+
+            <!-- Buzzer appears here when ready -->
+            <div id="buzzer-area">
+                <button id="buzzer">BUZZ IN!</button>
+            </div>
+
+             <!-- Player Selection appears after buzz -->
+             <div id="player-selection-area">
+                <p>Who buzzed in?</p>
+                <button id="select-Player1-btn">Player1</button>
+                <button id="select-Player2-btn">Player2</button>
+            </div>
+
+            <!-- Validation buttons appear after player selection -->
+            <div id="validation-area">
+                <div id="whos-answering">Player1 is answering...</div>
+                <button id="correct-btn">Correct</button>
+                <button id="incorrect-btn">Incorrect</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // --- CONFIGURATION ---
+        const API_BASE_URL = 'https://jarchive-json.glitch.me/glitch';
+        // *** Ensure we are using the more reliable proxy ***
+        const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
+        const PLAYER1_NAME = "Player1";
+        const PLAYER2_NAME = "Player2";
+        const BUZZER_DELAY_MS = 2000; // Time after showing clue before buzzer is active
+        const VALUE_CHANGEOVER_DATE = new Date(2001, 10, 26); // Nov 26, 2001 (Month is 0-indexed)
+
+        // --- Standard Clue Values ---
+        // Currently only fetching Round 1, but define both for potential future use
+        const JEOPARDY_VALUES_PRE_2001 = [100, 200, 300, 400, 500];
+        const JEOPARDY_VALUES_POST_2001 = [200, 400, 600, 800, 1000];
+        const DOUBLE_JEOPARDY_VALUES_PRE_2001 = [200, 400, 600, 800, 1000];
+        const DOUBLE_JEOPARDY_VALUES_POST_2001 = [400, 800, 1200, 1600, 2000];
+
+
+        // --- DOM ELEMENTS ---
+        const loadingDiv = document.getElementById('loading');
+        const gameContainer = document.getElementById('game-container');
+        const scoreboard = document.getElementById('scoreboard');
+        const player1ScoreElem = document.getElementById('Player1-score');
+        const player2ScoreElem = document.getElementById('Player2-score');
+        const boardElement = document.getElementById('jeopardy-board');
+        const newGameBtn = document.getElementById('new-game-btn');
+
+        const modal = document.getElementById('question-modal');
+        const modalContent = modal.querySelector('.modal-content');
+        const modalCloseBtn = document.getElementById('modal-close-btn');
+        const modalCategoryElem = document.getElementById('modal-category');
+        const modalQuestionElem = document.getElementById('modal-question');
+        const modalAnswerElem = document.getElementById('modal-answer');
+
+        const buzzerArea = document.getElementById('buzzer-area');
+        const buzzerButton = document.getElementById('buzzer');
+
+        const playerSelectionArea = document.getElementById('player-selection-area');
+        const selectPlayer1Btn = document.getElementById('select-Player1-btn');
+        const selectPlayer2Btn = document.getElementById('select-Player2-btn');
+
+        const validationArea = document.getElementById('validation-area');
+        const whosAnsweringElem = document.getElementById('whos-answering');
+        const correctBtn = document.getElementById('correct-btn');
+        const incorrectBtn = document.getElementById('incorrect-btn');
+
+        // --- GAME STATE ---
+        let categories = []; // Will hold data like [{ title: "CAT", clues: [...] }, ...]
+        let scores = { Player1: 0, Player2: 0 };
+        let currentClue = null; // { categoryIndex, clueIndex, value, question, answer }
+        let currentPlayer = null; // 'Player1' or 'Player2'
+        let buzzerActive = false;
+        let cluesRemaining = 30; // Assuming standard 6x5 board
+        let currentRound = 1; // Track current round (used for value fallback)
+        let currentGameDate = null; // Store the date of the fetched game
+
+        // --- CORE FUNCTIONS ---
+
+        /**
+         * Fetches game data (object format), prioritizing weekdays, Round 1. Uses allorigins proxy.
+         * Handles proxy wrapping.
+         * Returns an object: { gameData: { "CAT": [...] }, dateInfo: { year, month, day } } or null on failure.
+         */
+        async function fetchRandomGameData() {
+            console.log("Attempting to fetch random game data (expecting object format)...");
+            // Use the defined proxy constant
+            // const CORS_PROXY = 'https://api.allorigins.win/raw?url='; defined globally
+            // const API_BASE_URL = 'https://jarchive-json.glitch.me/glitch'; defined globally
+            let valid = false;
+            let gameDataObject = null;
+            let successfulDateInfo = null; // Store date info for successful fetch
+            let attempts = 0;
+            const maxAttempts = 20; // Increased slightly
+
+            while (!valid && attempts < maxAttempts) {
+                attempts++;
+                console.log(`Fetch attempt ${attempts}...`);
+
+                // 1. Generate Random Date Components
+                const year = 1996 + Math.ceil(Math.random() * (new Date().getFullYear() - 1996));
+                let month = Math.ceil(Math.random() * 12);
+                let day = Math.ceil(Math.random() * 28);
+                const monthStr = String(month).padStart(2, '0');
+                const dayStr = String(day).padStart(2, '0');
+
+                 // 1b. Check weekday
+                try {
+                    const testDate = new Date(year, month - 1, day); // JS month is 0-indexed
+                    const dayOfWeek = testDate.getDay(); // 0 = Sun, 6 = Sat
+                    if (dayOfWeek === 0 || dayOfWeek === 6) {
+                        console.log(`Skipping potential weekend date: ${monthStr}/${dayStr}/${year}`);
+                        await new Promise(resolve => setTimeout(resolve, 50)); // Small pause
+                        continue; // Try next random date
+                    }
+                } catch (dateError) {
+                    console.warn(`Error creating date object for ${monthStr}/${dayStr}/${year}:`, dateError);
+                    continue; // Skip this attempt
+                }
+
+                // 2. Construct API URL (Always Round 1 for now)
+                const round = 1; // Hardcoded for now
+                const apiUrl = `${API_BASE_URL}/${monthStr}/${dayStr}/${year}/${round}`;
+                const urlToFetch = CORS_PROXY + encodeURIComponent(apiUrl);
+                console.log("Fetching URL:", urlToFetch); // Check this uses allorigins.win
+
+                // 3. Fetch and Process
+                try {
+                    const response = await fetch(urlToFetch);
+
+                    if (!response.ok) {
+                         if (response.status === 429) { console.warn(`Proxy Rate Limit likely hit (Status 429) for ${apiUrl}. Waiting...`); await new Promise(resolve => setTimeout(resolve, 5000)); continue; }
+                         console.error(`HTTP error ${response.status} fetching via proxy for ${apiUrl}. Trying again.`); await new Promise(resolve => setTimeout(resolve, 1000)); continue;
+                    }
+
+                    const responseText = await response.text();
+                    let initialParsedData;
+                    try {
+                        initialParsedData = JSON.parse(responseText);
+                    } catch (parseError) {
+                         console.error(`Failed to parse initial JSON from proxy for ${apiUrl}:`, parseError); console.log("Raw Response Text Snippet:", responseText.substring(0, 500) + "...");
+                         if (responseText.includes("J! Archive does not have a game")) { console.warn(`API message (via raw text) for ${monthStr}/${dayStr}/${year}: No game found. Trying again.`); }
+                         else { console.warn(`Initial response was not valid JSON for ${apiUrl}. Retrying.`); }
+                         await new Promise(resolve => setTimeout(resolve, 500)); continue;
+                    }
+
+                    // 4. Extract and Validate the Actual Game Data Object
+                    let potentialGameObject = null;
+                    let extractedDirectly = false;
+
+                    if (typeof initialParsedData === 'object' && initialParsedData !== null && !Array.isArray(initialParsedData)) {
+                        if (initialParsedData.contents) {
+                            console.log(`Parsed data is object with 'contents' property for ${apiUrl}. Type: ${typeof initialParsedData.contents}`);
+                            if (typeof initialParsedData.contents === 'string') {
+                                console.log("Contents is a string, attempting to parse it...");
+                                try { potentialGameObject = JSON.parse(initialParsedData.contents); console.log("Successfully parsed string from 'contents'.");}
+                                catch (nestedParseError) { console.error(`Failed to parse JSON string inside 'contents' for ${apiUrl}:`, nestedParseError); if (initialParsedData.contents.includes("J! Archive does not have a game")) { console.warn(`API message (via 'contents' string)...`); } }
+                            } else if (typeof initialParsedData.contents === 'object' && !Array.isArray(initialParsedData.contents)) {
+                                potentialGameObject = initialParsedData.contents; console.log("Used object directly from 'contents'.");
+                            }
+                        } else if (Object.keys(initialParsedData).length > 0 && !initialParsedData.message) {
+                             console.log(`Parsed data is directly the category object for ${apiUrl}.`);
+                             potentialGameObject = initialParsedData;
+                             extractedDirectly = true;
+                        } else if (initialParsedData.message) {
+                              console.warn(`API message found directly after initial parse: ${initialParsedData.message}. Retrying.`);
+                        }
+                    } else if (Array.isArray(initialParsedData)) {
+                         console.warn(`Data is unexpectedly an Array, not object for ${apiUrl}. Retrying.`);
+                    } else {
+                         console.warn(`Parsed data is not a recognizable object or array for ${apiUrl}. Type: ${typeof initialParsedData}.`);
+                    }
+
+                    // 5. Final Validation of the extracted object
+                    let dataIsValid = false;
+                    if (typeof potentialGameObject === 'object' && potentialGameObject !== null && !Array.isArray(potentialGameObject)) {
+                         const keys = Object.keys(potentialGameObject);
+                         if (keys.length > 0 && !potentialGameObject.message) {
+                               console.log(`Successfully extracted valid category object structure for ${monthStr}/${dayStr}/${year}. Looks good!`);
+                               gameDataObject = potentialGameObject;
+                               successfulDateInfo = { year, month, day }; // Store date info
+                               dataIsValid = true;
+                         } else if (potentialGameObject.message) {
+                               console.warn(`API message found within potential object: ${potentialGameObject.message}. Retrying.`);
+                         } else if (keys.length === 0) {
+                               console.warn(`Extracted object is EMPTY for ${monthStr}/${dayStr}/${year}. Retrying.`);
+                         }
+                    } else if (!extractedDirectly) {
+                         // Log failure if parsing from 'contents' didn't work
+                         console.warn(`Parsing/extraction from proxy response did not yield a valid category object structure for ${apiUrl}.`);
+                    }
+
+                    if (dataIsValid) {
+                        valid = true; // Success! Exit the while loop.
+                    } else {
+                        // If data wasn't found or validated, pause and retry
+                         console.warn(`Data structure validation FAILED for ${monthStr}/${dayStr}/${year}. Retrying. Initial parsed data preview:`, String(initialParsedData).substring(0, 300));
+                        await new Promise(resolve => setTimeout(resolve, 750));
+                    }
+                } catch (error) {
+                    console.error(`Unexpected error during fetch/process loop for ${urlToFetch}:`, error);
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                }
+            } // end while loop
+
+            if (!valid) {
+                console.error("Failed to fetch and validate valid game data (object format) after multiple attempts.");
+                loadingDiv.textContent = "Failed to load game data. API/proxy issue or unexpected data format. Check console & try again.";
+                return null; // Indicate failure
+            }
+
+            // Return both the game data and the date it corresponds to
+            return { gameData: gameDataObject, dateInfo: successfulDateInfo };
+        }
+
+
+        /**
+         * Processes the game data object { "Category": [clues], ... } into the
+         * structured 'categories' array [{ title: "Category", clues: [...] }, ...].
+         * Assigns values based on date and index if API values are missing.
+         */
+        function processGameData(rawDataObject, gameDate) { // Accept gameDate
+            console.log("Processing game data object for date:", gameDate.toLocaleDateString(), rawDataObject);
+            if (!rawDataObject || typeof rawDataObject !== 'object' || Array.isArray(rawDataObject)) {
+                console.error("processGameData received invalid data type or null:", rawDataObject);
+                return [];
+            }
+            if (!gameDate || !(gameDate instanceof Date)) {
+                 console.error("processGameData did not receive a valid game date. Cannot determine values.");
+                 // Decide how to handle - return empty or use a default scale? Let's default to post-2001 for now.
+                 gameDate = new Date(); // Use today's date as a fallback (post-2001)
+            }
+
+            const categoryTitles = Object.keys(rawDataObject);
+            console.log(`Found ${categoryTitles.length} categories in raw data.`);
+            const processedCategories = [];
+            const expectedCategories = 6;
+            const expectedCluesPerCategory = 5;
+
+            // Determine which value scale to use based on the game date
+            const usePost2001Values = gameDate >= VALUE_CHANGEOVER_DATE;
+            // Assuming Round 1 for now
+            const valueScale = usePost2001Values ? JEOPARDY_VALUES_POST_2001 : JEOPARDY_VALUES_PRE_2001;
+            console.log(`Using value scale: ${usePost2001Values ? 'Post-Nov 2001' : 'Pre-Nov 2001'}`);
+
+            let categoriesToProcess = categoryTitles.slice(0, expectedCategories);
+            if (categoriesToProcess.length < expectedCategories) {
+                 console.warn(`Received fewer than ${expectedCategories} categories (${categoriesToProcess.length}).`);
+            }
+
+            for (const categoryTitle of categoriesToProcess) {
+                const rawClues = rawDataObject[categoryTitle];
+
+                if (!Array.isArray(rawClues)) {
+                    console.warn(`Data for category "${categoryTitle}" is not an array. Skipping & Padding.`);
+                    processedCategories.push({
+                        title: categoryTitle.toUpperCase(),
+                        clues: Array(expectedCluesPerCategory).fill({ question: "N/A", answer: "N/A", value: 0, answered: true })
+                    });
+                    continue;
+                }
+
+                const processedClues = [];
+                rawClues.forEach((rawClue, index) => {
+                     if (!rawClue || typeof rawClue !== 'object') {
+                         console.warn(`Invalid clue data at index ${index} for category "${categoryTitle}". Skipping clue.`);
+                         return;
+                     }
+
+                     // *** VALUE DETERMINATION WITH FALLBACK ***
+                     let value = 0;
+                     const apiValue = rawClue.value; // Value from the API (might be null/undefined)
+                     let valueSource = "API"; // Track where the value came from
+
+                     try { // Wrap parsing attempt in try/catch
+                        if (apiValue !== null && apiValue !== undefined) {
+                            if (typeof apiValue === 'number' && !isNaN(apiValue)) {
+                                value = apiValue;
+                            } else if (typeof apiValue === 'string') {
+                                const cleanedValueStr = apiValue.replace(/[$,]/g, '').trim();
+                                if (cleanedValueStr.toLowerCase().includes('daily double')) {
+                                    const ddValueMatch = cleanedValueStr.match(/(\d+)/);
+                                    if (ddValueMatch && ddValueMatch[1] && !isNaN(parseInt(ddValueMatch[1]))) {
+                                        value = parseInt(ddValueMatch[1]);
+                                    } else {
+                                        // API indicated DD but value missing/unparseable - Fallback needed below
+                                        value = 0; // Mark for fallback
+                                    }
+                                } else if (cleanedValueStr !== "" && !isNaN(parseInt(cleanedValueStr))) {
+                                     value = parseInt(cleanedValueStr);
+                                } else {
+                                     // API provided unparseable string - Fallback needed below
+                                     value = 0; // Mark for fallback
+                                }
+                            } else {
+                                 // API provided weird type - Fallback needed below
+                                 value = 0; // Mark for fallback
+                            }
+                        } else {
+                            // API value was null or undefined - Fallback needed below
+                            value = 0; // Mark for fallback
+                        }
+                     } catch (parseError) {
+                         console.warn(`   Error parsing API value "${apiValue}" for clue ${index} in "${categoryTitle}"`, parseError);
+                         value = 0; // Mark for fallback on error
+                     }
+
+
+                     // *** APPLY FALLBACK if API value missing or unparseable ***
+                     if (value === 0) {
+                        valueSource = "Fallback";
+                        if (index >= 0 && index < valueScale.length) {
+                            value = valueScale[index]; // Use index-based value from correct scale
+                        } else {
+                            console.warn(`   Fallback failed: Invalid index ${index} for value scale in "${categoryTitle}". Using 0.`);
+                            value = 0; // Default to 0 if index is somehow out of bounds
+                        }
+                         // Special case: If API *did* say "Daily Double" but had no value, log it.
+                         if (typeof apiValue === 'string' && apiValue.toLowerCase().includes('daily double')) {
+                              console.log(`   Applied fallback value $${value} for Daily Double (API value missing/unparseable: "${apiValue}")`);
+                         }
+                     }
+
+                     console.log(`  Processing Clue ${index} for "${categoryTitle}". Value: $${value} (Source: ${valueSource}). Raw API Value:`, apiValue);
+
+                    processedClues.push({
+                        question: rawClue.clue || "No question text found.",
+                        answer: rawClue.answer || "No answer text found.",
+                        value: value, // Use the determined value
+                        answered: false
+                    });
+                }); // --- End rawClues.forEach ---
+
+                // Sort clues by the determined value
+                processedClues.sort((a, b) => a.value - b.value);
+
+                // Ensure 5 clues, padding if necessary
+                while (processedClues.length < expectedCluesPerCategory) {
+                    console.warn(`Category "${categoryTitle}" has < ${expectedCluesPerCategory} valid clues (${processedClues.length}). Padding.`);
+                    processedClues.push({ question: "N/A", answer: "N/A", value: 0, answered: true });
+                }
+                if (processedClues.length > expectedCluesPerCategory) {
+                     console.warn(`Category "${categoryTitle}" has > ${expectedCluesPerCategory} valid clues (${processedClues.length}). Truncating.`);
+                     processedClues.length = expectedCluesPerCategory; // Truncate if API somehow gave too many
+                }
+
+
+                processedCategories.push({
+                    title: categoryTitle.toUpperCase(),
+                    clues: processedClues
+                });
+            } // End loop through categoryTitles
+
+            // Ensure 6 categories overall - Pad if necessary
+            while (processedCategories.length < expectedCategories) {
+                console.warn(`Fewer than ${expectedCategories} valid categories processed/padded (${processedCategories.length}). Adding MISSING CATEGORY.`);
+                processedCategories.push({
+                    title: "MISSING CATEGORY",
+                    clues: Array(expectedCluesPerCategory).fill({ question: "N/A", answer: "N/A", value: 0, answered: true })
+                });
+            }
+
+            console.log("Finished processing game data. Result:", processedCategories);
+            return processedCategories;
+        }
+
+
+        /** Renders the game board based on the 'categories' data. */
+        function renderBoard() {
+            boardElement.innerHTML = ''; // Clear previous board
+
+            // Render Category Headers
+            categories.forEach(cat => {
+                const catDiv = document.createElement('div');
+                catDiv.classList.add('category-header');
+                catDiv.textContent = cat.title;
+                boardElement.appendChild(catDiv);
+            });
+
+            // Render Clue Cells (column by column for correct board order)
+            for (let clueIdx = 0; clueIdx < 5; clueIdx++) {
+                for (let catIdx = 0; catIdx < categories.length; catIdx++) {
+                     // Defensive check for category existence
+                     if (!categories[catIdx] || !categories[catIdx].clues || !categories[catIdx].clues[clueIdx]){
+                         console.error(`Error rendering board: Missing data at catIdx ${catIdx}, clueIdx ${clueIdx}`);
+                          // Render a blank, answered cell as fallback
+                         const errorCell = document.createElement('div');
+                         errorCell.classList.add('clue-cell', 'answered');
+                         boardElement.appendChild(errorCell);
+                         continue; // Skip to next cell
+                     }
+
+                    const clue = categories[catIdx].clues[clueIdx];
+                    const clueCell = document.createElement('div');
+                    clueCell.classList.add('clue-cell');
+
+                    if (clue && !clue.answered) {
+                        // Display the determined value
+                        clueCell.textContent = `$${clue.value}`;
+                        clueCell.dataset.catIndex = catIdx;
+                        clueCell.dataset.clueIndex = clueIdx;
+                        clueCell.addEventListener('click', handleClueClick);
+                    } else {
+                         clueCell.classList.add('answered');
+                         clueCell.textContent = ''; // Keep answered cells blank
+                    }
+                    boardElement.appendChild(clueCell);
+                }
+            }
+             cluesRemaining = countRemainingClues(); // Recalculate remaining clues
+             console.log(`Board rendered. ${cluesRemaining} clues remaining.`);
+        }
+
+        /** Counts active clues on the board */
+        function countRemainingClues() {
+            let count = 0;
+            categories.forEach(cat => {
+                 if (cat && cat.clues) { // Add safety check
+                   cat.clues.forEach(clue => {
+                       if (clue && !clue.answered) {
+                           count++;
+                       }
+                   });
+                 }
+            });
+            return count;
+        }
+
+        /** Updates the score display */
+        function updateScoreboard() {
+            player1ScoreElem.textContent = scores.Player1;
+            player2ScoreElem.textContent = scores.Player2;
+            player1ScoreElem.style.color = scores.Player1 < 0 ? '#f44336' : '#ffcc00';
+            player2ScoreElem.style.color = scores.Player2 < 0 ? '#f44336' : '#ffcc00';
+        }
+
+        /** Handles clicking on a clue cell. */
+        function handleClueClick(event) {
+            const target = event.currentTarget;
+            if (!target || target.classList.contains('answered')) return;
+
+            const catIndex = parseInt(target.dataset.catIndex);
+            const clueIndex = parseInt(target.dataset.clueIndex);
+
+             // Add more robust check here
+             if (isNaN(catIndex) || isNaN(clueIndex) ||
+                 catIndex < 0 || catIndex >= categories.length ||
+                 clueIndex < 0 || !categories[catIndex] || !categories[catIndex].clues || clueIndex >= categories[catIndex].clues.length) {
+                  console.error("Invalid clue data reference on click:", target.dataset, "catIndex:", catIndex, "clueIndex:", clueIndex);
+                  target.textContent = 'ERR'; // Indicate error on cell
+                  target.classList.add('answered'); // Prevent further clicks
+                  return;
+             }
+
+            const clueData = categories[catIndex].clues[clueIndex];
+
+            if (!clueData || clueData.answered) { // Check data exists and isn't answered
+                 console.warn("Attempted to click invalid or already answered clue data.", catIndex, clueIndex);
+                 return;
+            }
+
+            console.log(`Clue clicked: Cat ${catIndex}, Clue ${clueIndex}, Value $${clueData.value}`);
+
+            currentClue = {
+                categoryIndex: catIndex,
+                clueIndex: clueIndex,
+                value: clueData.value,
+                question: clueData.question,
+                answer: clueData.answer
+            };
+
+            target.textContent = '';
+            target.classList.add('answered');
+            target.removeEventListener('click', handleClueClick);
+
+            showQuestionModal();
+        }
+
+
+        /** Displays the modal with the current clue's details. */
+        function showQuestionModal() {
+            if (!currentClue) return;
+            // Safety check category title access
+            modalCategoryElem.textContent = categories[currentClue.categoryIndex]?.title || "Error: Category Missing";
+            modalQuestionElem.textContent = currentClue.question;
+            modalAnswerElem.textContent = `Answer: ${currentClue.answer}`;
+            modalAnswerElem.style.display = 'none';
+            buzzerArea.style.display = 'none';
+            buzzerButton.disabled = true;
+            playerSelectionArea.style.display = 'none';
+            validationArea.style.display = 'none';
+
+            modal.style.display = 'flex';
+
+             buzzerActive = false;
+             console.log(`Setting ${BUZZER_DELAY_MS}ms timer for buzzer activation.`);
+             setTimeout(() => {
+                 if (modal.style.display === 'flex' && currentClue) { // Check modal still open for THIS clue
+                     console.log("Buzzer timer elapsed. Activating buzzer.");
+                     buzzerArea.style.display = 'block';
+                     buzzerButton.disabled = false;
+                     buzzerActive = true;
+                 } else {
+                      console.log("Buzzer timer aborted (modal closed or clue changed).");
+                 }
+             }, BUZZER_DELAY_MS);
+        }
+
+
+         /** Hides the question modal and resets related state. */
+         function hideModal() {
+             modal.style.display = 'none';
+             currentClue = null; // Clear active clue
+             currentPlayer = null; // Clear active player
+             buzzerActive = false; // Reset buzzer state explicitly
+             // Ensure all modal states reset
+             buzzerButton.disabled = true;
+             buzzerArea.style.display = 'none';
+             playerSelectionArea.style.display = 'none';
+             validationArea.style.display = 'none';
+
+             if (cluesRemaining <= 0) {
+                 console.log("Round Over!");
+                 alert(`Round Over!\nFinal Scores:\n${PLAYER1_NAME}: ${scores.Player1}\n${PLAYER2_NAME}: ${scores.Player2}\n\nClick 'Load New Random Game' to play again!`);
+             }
+         }
+
+
+        /** Handles the main buzzer being pressed. */
+        function handleBuzzerPress() { // Function Definition
+             if (!buzzerActive || buzzerButton.disabled) {
+                 console.warn("Buzzer pressed but not active or already disabled.");
+                 return;
+             }
+             console.log("Buzzer Pressed!");
+
+             buzzerActive = false;
+             buzzerButton.disabled = true;
+             buzzerArea.style.display = 'none';
+             modalAnswerElem.style.display = 'block'; // Reveal answer
+             playerSelectionArea.style.display = 'block'; // Show player selection
+             validationArea.style.display = 'none';
+        }
+
+
+        /** Handles player selection after a buzz. */
+        function handlePlayerSelection(playerName) {
+            if (!currentClue || currentPlayer) {
+                 console.warn("Player selection invalid state: No current clue or player already selected.");
+                 return;
+            }
+            currentPlayer = playerName.toLowerCase();
+            console.log(`${playerName} selected to answer.`);
+
+            playerSelectionArea.style.display = 'none';
+            whosAnsweringElem.textContent = `${playerName} is answering... (Value: $${currentClue.value})`;
+            validationArea.style.display = 'block'; // Show validation buttons
+        }
+
+
+        /** Handles the 'Correct' or 'Incorrect' button press. */
+        function handleAnswer(isCorrect) {
+            if (!currentClue || !currentPlayer) {
+                console.error("Answer validation invalid state: Missing clue or player.");
+                return;
+            }
+
+            // Use a fallback for value just in case, though it should be set correctly now
+            const value = currentClue.value || 0;
+
+            console.log(`Player ${currentPlayer} answered ${isCorrect ? 'Correctly' : 'Incorrectly'} for $${value}.`);
+
+            if (isCorrect) {
+                scores[currentPlayer] += value;
+            } else {
+                scores[currentPlayer] -= value;
+            }
+
+             // Mark the clue as answered in the main data structure
+             try {
+                 if (categories[currentClue.categoryIndex] && categories[currentClue.categoryIndex].clues[currentClue.clueIndex]) {
+                    categories[currentClue.categoryIndex].clues[currentClue.clueIndex].answered = true;
+                 } else {
+                      throw new Error("Invalid index access during marking answer.");
+                 }
+                 cluesRemaining = countRemainingClues(); // Recount remaining clues
+                 console.log(`Clues remaining: ${cluesRemaining}`);
+             } catch (e) {
+                 console.error("Error marking clue as answered in data model:", e, currentClue);
+             }
+
+            updateScoreboard();
+            hideModal(); // Close modal, reset state, check for game over
+        }
+
+
+        /** Initializes a new game */
+        async function initGame() {
+            console.log("Initializing new game...");
+            loadingDiv.style.display = 'block';
+            loadingDiv.textContent = "Loading Game... Fetching clues..."; // Reset loading text
+            gameContainer.style.display = 'none';
+            boardElement.innerHTML = '';
+            modal.style.display = 'none';
+
+            // Reset state
+            scores = { Player1: 0, Player2: 0 };
+            currentClue = null;
+            currentPlayer = null;
+            buzzerActive = false;
+            categories = [];
+            currentGameDate = null; // Reset game date
+            currentRound = 1; // Reset round
+
+            updateScoreboard();
+
+            const fetchResult = await fetchRandomGameData(); // Expects { gameData: {...}, dateInfo: {...} }
+
+            if (!fetchResult || !fetchResult.gameData || !fetchResult.dateInfo) {
+                loadingDiv.textContent = "Failed to load game data. Please check console and try again. The API or CORS proxy might be unavailable.";
+                // No need to hide loadingDiv here, it shows the error
+                return; // Stop initialization
+            }
+
+            const rawData = fetchResult.gameData;
+            const dateInfo = fetchResult.dateInfo;
+            try {
+                 currentGameDate = new Date(dateInfo.year, dateInfo.month - 1, dateInfo.day); // Store the Date object
+                 console.log("Fetched game date:", currentGameDate.toLocaleDateString());
+            } catch (e) {
+                 console.error("Error creating Date object from fetched dateInfo:", dateInfo, e);
+                 // Use a default date (post-2001) if creation fails
+                 currentGameDate = new Date();
+                 loadingDiv.textContent = "Warning: Could not parse game date, value calculation might be affected. Check console."; // Show warning
+            }
+
+
+            // Pass the game date to processing function
+            categories = processGameData(rawData, currentGameDate);
+
+            // QA Check on processed data structure
+            if (!categories || categories.length === 0 || categories.length > 6 || categories.some(cat => !cat || !cat.clues || cat.clues.length !== 5)) {
+                 console.error("Processed game data structure is invalid:", categories);
+                 loadingDiv.textContent = "Error processing game data. Invalid structure after processing. See console.";
+                 return;
+            }
+
+
+            renderBoard();
+
+            loadingDiv.style.display = 'none'; // Hide loading message
+            gameContainer.style.display = 'flex'; // Show game container
+            console.log("Game Initialized Successfully.");
+        }
+
+
+        // --- EVENT LISTENERS (Ensure these are AFTER function definitions) ---
+        newGameBtn.addEventListener('click', initGame);
+        buzzerButton.addEventListener('click', handleBuzzerPress); // Attaching listener
+        selectPlayer1Btn.addEventListener('click', () => handlePlayerSelection(PLAYER1_NAME));
+        selectPlayer2Btn.addEventListener('click', () => handlePlayerSelection(PLAYER2_NAME));
+        correctBtn.addEventListener('click', () => handleAnswer(true));
+        incorrectBtn.addEventListener('click', () => handleAnswer(false));
+        modalCloseBtn.addEventListener('click', hideModal);
+
+        modal.addEventListener('click', (event) => {
+            if (event.target === modal) {
+                console.log("Clicked outside modal content, closing.");
+                hideModal();
+            }
+        });
+
+        // --- INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', initGame); // Start game on load
+
+    </script>
+
+
+</body>
+</html>
